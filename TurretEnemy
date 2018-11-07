@@ -1,0 +1,105 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class TurretEnemy : MonoBehaviour {
+
+    public GameObject targetLocation;
+    public GameObject targetArea;
+    public GameObject ammo;
+    public GameObject ammoSpawn;
+    public GameObject gunRotator;
+    public float angle;
+    public float force;
+
+
+	// Use this for initialization
+	void Start () {
+		
+	}
+	
+	// Update is called once per frame
+	void Update () {
+		
+	}
+
+    public void Shoot()
+    {
+        Debug.Log("ammutaan ammus");
+        Vector3[] direction = HitTargetBySpeed(ammoSpawn.transform.position, targetArea.transform.position, Physics.gravity, force);
+
+        GameObject projectile = Instantiate(ammo, ammoSpawn.transform.position, Quaternion.identity);
+        projectile.GetComponent<Rigidbody>().AddForce(direction[0], ForceMode.Impulse);
+        //GameObject projectile2 = Instantiate(ammo, ammoSpawn.transform.position, Quaternion.identity);
+        //projectile.GetComponent<Rigidbody>().AddForce(direction[1], ForceMode.Impulse);
+    }
+
+    public static Vector3[] HitTargetBySpeed(Vector3 startPosition, Vector3 targetPosition, Vector3 gravityBase, float launchSpeed)
+    {
+        Vector3 AtoB = targetPosition - startPosition;
+        Vector3 horizonetal = GetHorizonetalVector(AtoB, gravityBase, startPosition);
+        float horizonetalDistance = horizonetal.magnitude;
+
+        Vector3 Vertical = GetVerticalVector(AtoB, gravityBase, startPosition);
+        float verticalDistance = Vertical.magnitude * Mathf.Sign(Vector3.Dot(Vertical, -gravityBase));
+
+        float x2 = horizonetalDistance * horizonetalDistance;
+        float v2 = launchSpeed * launchSpeed;
+        float v4 = launchSpeed * launchSpeed * launchSpeed * launchSpeed;
+        float gravMag = gravityBase.magnitude;
+
+        float launchTest = v4 - (gravMag * ((gravMag * x2) + (2 * verticalDistance * v2)));
+        Debug.Log("LAUNCHTEST: " + launchTest);
+
+        Vector3[] launch = new Vector3[2];
+
+        if (launchTest < 0)
+        {
+            // Ei voida osua millään, mutta ammutaan silti 45 asteen kulmassa.
+            launch[0] = (horizonetal.normalized * launchSpeed * Mathf.Cos(45.0f * Mathf.Deg2Rad) - 
+                (gravityBase * launchSpeed * Mathf.Sin(45.0f * Mathf.Deg2Rad)));
+            launch[1] = (horizonetal.normalized * launchSpeed * Mathf.Cos(45.0f * Mathf.Deg2Rad) -
+                (gravityBase * launchSpeed * Mathf.Sin(45.0f * Mathf.Deg2Rad)));
+        }
+        else
+        {
+            //voidaan osua, lasketaan kaksi kulmaa.
+            float[] tanAngle = new float[2];
+            tanAngle[0] = (v2 - Mathf.Sqrt(v4 - gravMag * ((gravMag * x2) + (2 * verticalDistance * v2)))) / (gravMag * horizonetalDistance);
+
+            tanAngle[1] = (v2 + Mathf.Sqrt(v4 - gravMag * ((gravMag * x2) + (2 * verticalDistance * v2)))) / (gravMag * horizonetalDistance);
+
+            float[] finalAngle = new float[2];
+            finalAngle[0] = Mathf.Atan(tanAngle[0]);
+            finalAngle[1] = Mathf.Atan(tanAngle[1]);
+            Debug.Log("Kulmat, joihin ammutaan ovat: " + finalAngle[0] * Mathf.Rad2Deg + " ja " + finalAngle[1] * Mathf.Rad2Deg);
+
+            launch[0] = (horizonetal.normalized * launchSpeed * Mathf.Cos(finalAngle[0])) - (gravityBase.normalized * launchSpeed * Mathf.Sin(finalAngle[0]));
+            launch[1] = (horizonetal.normalized * launchSpeed * Mathf.Cos(finalAngle[1])) - (gravityBase.normalized * launchSpeed * Mathf.Sin(finalAngle[1]));
+        }
+
+        return launch;
+    }
+
+    public static Vector3 GetHorizonetalVector(Vector3 AtoB, Vector3 gravityBase, Vector3 start)
+    {
+        Vector3 output;
+        Vector3 perpenticular = Vector3.Cross(AtoB, gravityBase);
+        perpenticular = Vector3.Cross(gravityBase, perpenticular);
+        output = Vector3.Project(AtoB, perpenticular);
+        Debug.DrawRay(start, output, Color.green, 10f);
+
+        
+
+        return output;
+    }
+
+    public static Vector3 GetVerticalVector(Vector3 AtoB, Vector3 gravityBase, Vector3 start)
+    {
+        Vector3 output;
+        output = Vector3.Project(AtoB, gravityBase);
+        Debug.DrawRay(start, output, Color.red, 10f);
+        
+        return output;
+    }
+}
